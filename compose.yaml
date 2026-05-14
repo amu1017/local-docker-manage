@@ -1,0 +1,139 @@
+services:
+  traefik:
+    image: traefik:latest
+    container_name: traefik
+    restart: unless-stopped
+    environment:
+      - TZ=Asia/Tokyo
+    command:
+      - --api.insecure=true
+      - --api.dashboard=true
+      - --providers.docker=true
+      - --providers.docker.exposedbydefault=false
+      - --entrypoints.web.address=:80
+      - --entrypoints.websecure.address=:443
+      - --entrypoints.websecure.http.tls=true
+      - --providers.docker.defaultRule=Host(`{{ index .Labels"com.docker.compose.service" }}.local.localhost`)
+      - --providers.file.filename=/etc/traefik/dynamic_conf.yaml
+      - --log.format=common
+      - --log.level=INFO
+      - --accesslog.filepath=/logs/access.log
+      - --accesslog.format=common
+    configs:
+      - source: traefik_dynamic
+        target: /etc/traefik/dynamic_conf.yaml
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+      - ./cert:/certs:ro
+    networks:
+      - proxy-net
+    ports:
+      - 127.0.0.1:80:80
+      - 127.0.0.1:443:443
+      - 127.0.0.1:8080:8080
+    labels:
+      - homepage.name=Traefik
+      - homepage.group=Management
+      - homepage.icon=https://traefik.io/favicon.svg
+      - homepage.href=http://localhost:8080/dashboard
+  dockhand:
+    image: fnsys/dockhand:latest
+    container_name: dockhand
+    restart: unless-stopped
+    environment:
+      - TZ=Asia/Tokyo
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+      - dockhand_data:/app/data
+    networks:
+      - proxy-net
+    ports:
+      - 127.0.0.1:1001:3000
+    labels:
+      - traefik.enable=true
+      - traefik.http.routers.dockhand.entrypoints=websecure
+      - homepage.name=Dockhand
+      - homepage.group=Management
+      - homepage.icon=https://dockhand.pro/images/logo-dark.webp
+      - homepage.href=https://dockhand.local.localhost
+  dockge:
+    image: louislam/dockge:latest
+    container_name: dockge
+    restart: unless-stopped
+    environment:
+      - TZ=Asia/Tokyo
+      - DOCKGE_STACKS_DIR=/opt/docker_stacks
+      - DOCKGE_ENABLE_CONSOLE=true
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+      - dockge_data:/app/data
+      - /opt/docker_stacks:/opt/docker_stacks
+    ports:
+      - 127.0.0.1:1002:5001
+    networks:
+      - proxy-net
+    labels:
+      - traefik.enable=true
+      - traefik.http.routers.dockge.entrypoints=websecure
+      - homepage.name=Dockge
+      - homepage.group=Management
+      - homepage.icon=https://dockge.kuma.pet/icon.svg
+      - homepage.href=https://dockge.local.localhost
+  homepage:
+    image: ghcr.io/gethomepage/homepage:latest
+    container_name: homepage
+    restart: unless-stopped
+    environment:
+      - TZ=Asia/Tokyo
+      - HOMEPAGE_ALLOWED_HOSTS=localhost:1003,homepage.local.localhost
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+    configs:
+      - source: homepage_docker
+        target: /app/config/docker.yaml
+      - source: homepage_widgets
+        target: /app/config/widgets.yaml
+      - source: homepage_services
+        target: /app/config/services.yaml
+      - source: homepage_bookmarks
+        target: /app/config/bookmarks.yaml
+    networks:
+      - proxy-net
+    ports:
+      - 127.0.0.1:1003:3000
+    labels:
+      - traefik.enable=true
+      - traefik.http.routers.homepage.entrypoints=websecure
+volumes:
+  dockhand_data: null
+  dockge_data: null
+configs:
+  traefik_dynamic:
+    content: |
+      tls:
+        certificates:
+          - certFile: /certs/local-cert.pem
+            keyFile: /certs/local-key.pem
+  homepage_docker:
+    content: |
+      my-docker:
+        socket: /var/run/docker.sock
+  homepage_widgets:
+    content: |
+      - resources:
+          refresh: 3000
+          expanded: true
+          cpu: true
+          memory: true
+          network: true
+          disk: /
+          diskUnits: bytes
+  homepage_services:
+    content: |
+      []
+  homepage_bookmarks:
+    content: |
+      []
+networks:
+  proxy-net:
+    name: proxy-net
