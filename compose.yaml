@@ -13,7 +13,7 @@ services:
       - --entrypoints.web.address=:80
       - --entrypoints.websecure.address=:443
       - --entrypoints.websecure.http.tls=true
-      - --providers.docker.defaultRule=Host(`{{ index .Labels"com.docker.compose.service" }}.local.localhost`)
+      - --providers.docker.defaultRule=Host(`{{ index .Labels "com.docker.compose.service" }}.local.localhost`)
       - --providers.file.filename=/etc/traefik/dynamic_conf.yaml
       - --log.format=common
       - --log.level=INFO
