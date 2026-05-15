@@ -1,0 +1,18 @@
+services:
+  whoami:
+    image: traefik/whoami:latest
+    container_name: whoami
+    restart: unless-stopped
+    networks:
+      - proxy-net
+    labels:
+      - traefik.enable=true
+      - traefik.http.routers.whoami.entrypoints=websecure
+      - homepage.name=whoami
+      - homepage.group=demo
+      - homepage.icon=mdi-incognito
+      - homepage.href=https://whoami.local.localhost
+
+networks:
+  proxy-net:
+    external: true
