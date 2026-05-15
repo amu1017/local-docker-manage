@@ -14,15 +14,17 @@ cat <<'EOF' >> /etc/docker/daemon.json
 EOF
 systemctl start docker.socket docker.service
 
+
+# ユーザー権限
 CERT_SAN="*.local.localhost *.localhost localhost"
 CERT_SAN+=" 127.0.0.1 127.0.0.2 127.0.0.3 127.0.0.11 127.0.0.12 127.0.0.13"
 
-mkdir -p /opt/docker_stacks/manage ; cd "$_" || exit
-
-apt install mkcert libnss3-tools
+sudo mkdir -p /opt/docker_stacks/manage/cert ; cd "$_" || exit
+cd ../
+sudo chmod -R 1777 /opt/docker_stacks
+sudo apt install mkcert libnss3-tools
 mkcert -install
 mkcert -cert-file ./cert/local-cert.pem -key-file ./cert/local-key.pem ${CERT_SAN}
-
-cd ../ || exit
+sudo chown -R root:root ./cert/local-*.pem
 
 docker compose up -d
